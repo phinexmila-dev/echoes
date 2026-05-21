@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="en" translate="no" data-notranslate="" class="notranslate"><head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Echoes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#e6eef2">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+  <link rel="icon" href="images/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
+  <title>Echoes</title>
+  <script type="module" crossorigin="" src="js/index-9Muy3ZmT.js"></script>
+  <link rel="stylesheet" crossorigin="" href="css/index-Cx6ZVIfa.css">
+</head>
+
+<body class="notranslate">
+  <div id="root" class="notranslate"></div>
+  <script>
+    (function() {
+      var warnedMethods = {};
+
+      function warnOnce(method, error) {
+        if (warnedMethods[method]) return;
+        warnedMethods[method] = true;
+        try {
+          console.warn('[Echoes DOM guard] Skipped a DOM operation after external DOM mutation.', {
+            method: method,
+            error: error ? {
+              name: error.name,
+              message: error.message,
+            } : null,
+          });
+        } catch (_) {
+          // Ignore logging failures in hostile browsers.
+        }
+      }
+
+      function isRecoverableDomMismatch(error) {
+        if (!error) return false;
+        var message = error.message || '';
+        return error.name === 'NotFoundError'
+          || message.indexOf('insertBefore') !== -1
+          || message.indexOf('removeChild') !== -1
+          || message.indexOf('节点') !== -1;
+      }
+
+      var rawInsertBefore = Node.prototype.insertBefore;
+      Node.prototype.insertBefore = function(newNode, refNode) {
+        if (refNode && refNode.parentNode !== this) {
+          warnOnce('insertBefore', null);
+          return newNode;
+        }
+
+        try {
+          return rawInsertBefore.call(this, newNode, refNode);
+        } catch (error) {
+          if (isRecoverableDomMismatch(error)) {
+            warnOnce('insertBefore', error);
+            return newNode;
+          }
+          throw error;
+        }
+      };
+
+      var rawRemoveChild = Node.prototype.removeChild;
+      Node.prototype.removeChild = function(child) {
+        if (!child || child.parentNode !== this) {
+          warnOnce('removeChild', null);
+          return child;
+        }
+
+        try {
+          return rawRemoveChild.call(this, child);
+        } catch (error) {
+          if (isRecoverableDomMismatch(error)) {
+            warnOnce('removeChild', error);
+            return child;
+          }
+          throw error;
+        }
+      };
+    })();
+  </script>
+  <script>
+    // Android Chrome bfcache recovery: when the page is restored from bfcache
+    // after being killed, force a full reload to avoid stale JS context.
+    window.addEventListener('pageshow', function(e) {
+      if (e.persisted) {
+        // In PWA, must clear SW caches first or reload just serves stale content
+        Promise.resolve()
+          .then(function() {
+            return 'caches' in window ? caches.keys().then(function(ks) { return Promise.all(ks.map(function(k) { return caches.delete(k); })); }) : 0;
+          })
+          .then(function() { location.reload(); })
+          .catch(function() { location.reload(); });
+      }
+    });
+
+    // Last-resort recovery: if a chunk fails to load or any fatal error occurs,
+    // show a reload prompt instead of a white screen.
+    window.addEventListener('error', function(e) {
+      if (e.message && (e.message.indexOf('Loading chunk') !== -1
+        || e.message.indexOf('dynamically imported module') !== -1
+        || e.message.indexOf('module script failed') !== -1
+        || e.message.indexOf('Unexpected end of script') !== -1)) {
+        showRecovery();
+      }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var r = e.reason;
+      var msg = (r && (r.message || String(r))) || '';
+      if (msg.indexOf('dynamically imported module') !== -1
+        || msg.indexOf('Loading chunk') !== -1
+        || msg.indexOf('module script failed') !== -1
+        || msg.indexOf('Unexpected end of script') !== -1) {
+        showRecovery();
+      }
+    });
+    function showRecovery() {
+      if (document.getElementById('_recovery')) return;
+      var d = document.createElement('div');
+      d.id = '_recovery';
+      d.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f0f4f8;font-family:system-ui,sans-serif;';
+      d.innerHTML = '<div style="color:#94a3b8;font-size:2rem;margin-bottom:1rem">\u26A0</div>'
+        + '<div style="color:#64748b;font-size:1rem;margin-bottom:0.5rem">\u7248\u672C\u5DF2\u66F4\u65B0</div>'
+        + '<div style="color:#94a3b8;font-size:0.85rem;margin-bottom:1.5rem">\u8BF7\u5237\u65B0\u9875\u9762\u4EE5\u52A0\u8F7D\u6700\u65B0\u5185\u5BB9</div>'
+        + '<button id="_recoveryBtn" onclick="hardReload()" style="padding:0.5rem 1.5rem;border-radius:0.75rem;border:none;background:#64748b;color:#fff;font-size:0.875rem;cursor:pointer">\u5237\u65B0\u9875\u9762</button>';
+      document.body.appendChild(d);
+    }
+    function hardReload() {
+      var btn = document.getElementById('_recoveryBtn');
+      if (btn) { btn.textContent = '\u6B63\u5728\u5237\u65B0\u2026'; btn.disabled = true; btn.style.background = '#94a3b8'; btn.style.cursor = 'not-allowed'; }
+      function bustReload() {
+        // 带时间戳绕过浏览器 HTTP 缓存（特别是 iOS PWA）
+        var url = location.pathname + '?_t=' + Date.now() + location.hash;
+        location.replace(url);
+      }
+      Promise.resolve()
+        .then(function() {
+          return 'caches' in window ? caches.keys().then(function(ks) { return Promise.all(ks.map(function(k) { return caches.delete(k); })); }) : 0;
+        })
+        .then(function() {
+          return navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function(rs) { return Promise.all(rs.map(function(r) { return r.unregister(); })); }) : 0;
+        })
+        .then(bustReload)
+        .catch(bustReload);
+    }
+  </script>
+
+
+</body></html>
